@@ -1,0 +1,80 @@
+package gldm "http://example.org/gldm/1.0"
+
+/** Primitive property types for graph logical DB models (data-driven) */
+enum PropType {
+  string   = "string"
+  integer  = "integer"
+  float    = "float"
+  date     = "date"
+  datetime = "datetime"
+}
+
+/** Root model: node labels (entities) and relationship types (binary/reflexive only) */
+class Model {
+  String name
+  contains NodeLabel[*] nodeLabels
+  contains RelType[*]   relTypes
+}
+
+/** Node label (≈ class in adjusted CD) */
+class NodeLabel {
+  String name
+  contains Property[*] properties opposite ownerNodeLabel
+}
+
+/** Property owned by a node label or by a relationship type */
+class Property {
+  container NodeLabel ownerNodeLabel opposite properties
+  container RelType   ownerRelType   opposite relProperties
+  PropType type
+  String   name
+  boolean  isUnique
+}
+
+/** Base relationship type (for binary and reflexive variants) */
+abstract class RelType {
+  String name
+  contains Property[*] relProperties opposite ownerRelType
+}
+
+/** One end of a relationship type: target node label, optional role, multiplicity */
+class RelEnd {
+  ref NodeLabel label
+  String role
+  contains Multiplicity multiplicity
+}
+
+/**
+ * Multiplicity with two bounds.
+ * Each Bound can be:
+ *   - concrete integer (value set; unknown=false; unlimited=false)
+ *   - unknown '?'     (unknown=true)
+ *   - unlimited '*'   (unlimited=true)
+ * When unknown or unlimited is true, 'value' is ignored.
+ */
+class Multiplicity {
+  contains Bound lower
+  contains Bound upper
+}
+
+/** Lower/upper bound atom */
+class Bound {
+  int value
+  boolean unknown
+  boolean unlimited
+}
+
+/** Binary relationship type with exactly two ends */
+class BinaryRelType extends RelType {
+  contains RelEnd end1
+  contains RelEnd end2
+}
+
+/** Reflexive relationship type on a single node label (two roles / two multiplicities) */
+class ReflexiveRelType extends RelType {
+  ref NodeLabel label
+  String role1
+  String role2
+  contains Multiplicity m1
+  contains Multiplicity m2
+}

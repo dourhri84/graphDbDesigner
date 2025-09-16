@@ -1,0 +1,137 @@
+grammar org.graphdesign.umlcd.CDLang with org.eclipse.xtext.common.Terminals
+
+generate cdLang "http://example.org/cd/1.0"
+
+/* ===========================
+ *  Top-level CD (diagram)
+ * =========================== */
+
+Model:
+  'cd' name=ID '{'
+    classes+=Class+                  // at least one class
+    relationships+=Relationship*
+  '}'
+;
+
+/* ===========================
+ *  Core concepts
+ * =========================== */
+
+Class:
+  'class' cname=ID '{'
+    attributes+=Attribute+           // at least one attribute per class
+  '}'
+;
+
+/* Types primitifs autorisés pour les attributs */
+AttrType:
+  'string' | 'integer' | 'float' | 'date' | 'datetime'
+;
+
+
+/* Multiplicity: lower..upper, where upper is INT or '*' */
+Multiplicity:
+  lower=INT '..' upper=Upper
+;
+
+Upper:
+  INT | '*'
+;
+
+/* ===========================
+ *  Relationships (root)
+ * =========================== */
+
+Relationship:
+    Association
+  | Aggregation
+  | Composition
+  | Inheritance
+;
+
+/* Relationship may own attributes (exclusive containment ensures
+ * attributes belong either to a Class or to a Relationship, never both)
+ */
+RelationshipBody:
+  ('{' (relAttributes+=Attribute)* '}')?
+;
+
+
+/* ===========================
+ *  Association hierarchy
+ * =========================== */
+
+/* Association is the abstract root */
+Association:
+    MultiClassAssoc            // abstract: binary/n-ary families
+  | ReflexiveAssociation       // self-association
+;
+
+/* Abstract multi-class association (≥ 2 ends) */
+MultiClassAssoc:
+    BinaryAssociation          // exactly two ends
+  | NaryAssociation            // three or more ends
+;
+
+/* An association end binds an association to a (class, multiplicity, role) */
+AssocEnd:
+  participant=[Class] '[' multiplicity=Multiplicity ']' ('as' role=ID)?
+;
+
+/* -------- MultiClassAssoc specializations: binary / n-ary -------- */
+
+BinaryAssociation:
+  'association' aname=ID 'binary'
+  '{' end1=AssocEnd ',' end2=AssocEnd '}'
+  RelationshipBody
+;
+
+NaryAssociation:
+  'association' aname=ID 'nary'
+  '{' first=AssocEnd ',' second=AssocEnd ',' ends+=AssocEnd (',' ends+=AssocEnd)* '}'
+  RelationshipBody
+;
+
+/* Reflexive association (on a single class), with 2 explicit multiplicities */
+ReflexiveAssociation:
+  'association' aname=ID 'reflexive' 'on' cls=[Class]
+  '{'
+     ('roles' '(' role1=ID ',' role2=ID ')')?
+     'm1' '[' m1=Multiplicity ']'    // first end multiplicity
+     'm2' '[' m2=Multiplicity ']'    // second end multiplicity
+  '}'
+  RelationshipBody
+;
+
+/* ===========================
+ *  Aggregation & Composition
+ * =========================== */
+
+Aggregation:
+  'aggregation' '{'
+     'parent' parent=[Class] ','     // parent side multiplicity is implicit '*'
+     'child'  child=[Class]  ','     // child side multiplicity explicit
+     'childMultiplicity' '[' childMult=Multiplicity ']'
+  '}'
+  RelationshipBody
+;
+
+Composition:
+  'composition' '{'
+     'whole' whole=[Class] ','       // whole side multiplicity is implicit '1'
+     'part'  part=[Class]  ','       // part side multiplicity explicit
+     'partMultiplicity' '[' partMult=Multiplicity ']'
+  '}'
+  RelationshipBody
+;
+
+/* ===========================
+ *  Inheritance (Generalization)
+ * =========================== */
+
+Inheritance:
+  'generalization' superClass=[Class] '->' subClasses+=[Class] (',' subClasses+=[Class])*
+  ( 'disjoint' | 'overlapping' )
+  ( 'complete' | 'incomplete' )
+  ';'?
+;

@@ -1,0 +1,283 @@
+module CD2ACD;
+create OUT : ACD from IN : CD;
+
+-- ===========================================
+-- ============= Helpers / Queries ===========
+-- ===========================================
+
+-- convenience: CD enums map 1:1 to ACD enums
+helper def: mapType(t : CD!Type) : ACD!Type = ACD!Type#(t.ordinal());
+
+-- subclasses of a given superclass (direct only; extend to transitive if needed)
+helper context CD!Class def: directSubclasses() : Set(CD!Class) =
+  CD!Inheritance.allInstances()->select(i | i.superClass = self)
+                                 ->collect(i | i.subClasses)->flatten()->asSet();
+
+-- does an inheritance exist (with this class as super) that is DISJOINT & COMPLETE?
+helper context CD!Class def: hasDisjointCompleteInheritance() : Boolean =
+  CD!Inheritance.allInstances()->exists(i | i.superClass = self and i.isDisjoint and i.isComplete);
+
+-- does an inheritance exist (with this class as super) that is NOT (disjoint & complete)?
+helper context CD!Class def: hasNonDCompleteInheritance() : Boolean =
+  CD!Inheritance.allInstances()->exists(i | i.superClass = self and not (i.isDisjoint and i.isComplete));
+
+-- is this class a subclass in some DISJOINT & COMPLETE inheritance (thus removed)?
+helper context CD!Class def: removedAsSubclass() : Boolean =
+  CD!Inheritance.allInstances()->exists(i | (i.isDisjoint and i.isComplete) and i.subClasses->includes(self));
+
+-- is this class the superclass in a NON-(disjoint & complete) inheritance (thus removed)?
+helper context CD!Class def: removedAsSuperclass() : Boolean =
+  self.hasNonDCompleteInheritance();
+
+-- kept in ACD?
+helper context CD!Class def: isKept() : Boolean = not (self.removedAsSubclass() or self.removedAsSuperclass());
+
+-- all attributes of a class, including push-down from super if super will be removed
+helper context CD!Class def: effectiveAttributes() : Sequence(CD!Attribute) =
+  if self.removedAsSubclass() then
+     Sequence{}   -- it won’t be created anyway
+  else
+     let own : Sequence(CD!Attribute) = self.attributes in
+     -- if any super to be removed, push its attributes
+     let pushed : Sequence(CD!Attribute) =
+       CD!Inheritance.allInstances()
+         ->select(i | i.subClasses->includes(self) and i.superClass.hasNonDCompleteInheritance())
+         ->collect(i | i.superClass.attributes)->flatten() in
+     (own->union(pushed))->asSequence()
+  endif;
+
+-- clone CD multiplicity -> ACD multiplicity
+-- (Create both bounds; '*' becomes unlimited=true; ints copied; unknown=false)
+helper def: cloneMult(m : CD!Multiplicity) : ACD!Multiplicity =
+  ACD!Multiplicity{
+    lower <- ACD!Bound{ value <- m.lower, unknown <- false, unlimited <- false },
+    upper <- ACD!Bound{
+               value <- m.upper,
+               unknown <- false,
+               unlimited <- (if m.upperUnlimited then true else false endif)
+             }
+  };
+
+-- ACD multiplicity ?..?
+helper def: unknownMult() : ACD!Multiplicity =
+  ACD!Multiplicity{
+    lower <- ACD!Bound{ unknown <- true, unlimited <- false, value <- 0 },
+    upper <- ACD!Bound{ unknown <- true, unlimited <- false, value <- 0 }
+  };
+
+-- ACD multiplicity 1..1
+helper def: oneOne() : ACD!Multiplicity =
+  ACD!Multiplicity{
+    lower <- ACD!Bound{ value <- 1, unknown <- false, unlimited <- false },
+    upper <- ACD!Bound{ value <- 1, unknown <- false, unlimited <- false }
+  };
+
+-- ACD multiplicity 0..*
+helper def: zeroStar() : ACD!Multiplicity =
+  ACD!Multiplicity{
+    lower <- ACD!Bound{ value <- 0, unknown <- false, unlimited <- false },
+    upper <- ACD!Bound{ value <- 0, unknown <- false, unlimited <- true  }
+  };
+
+-- Resolve the target ACD!Class for a source CD!Class (only for kept ones)
+helper def: tgtClass(c : CD!Class) : ACD!Class = thisModule.resolveTemp(c, 'tc');
+
+-- ===========================================
+-- ============== Root mapping =================
+-- ===========================================
+
+rule Model2Model {
+  from s : CD!Model
+  to   t : ACD!Model (
+         name <- s.name,
+         classes <- s.classes->select(c | c.isKept())->collect(c | thisModule.Class2Class(c)),
+         associations <- Sequence{}  -- filled in do{} below
+       )
+  do {
+    -- copy/expand existing Binary associations (with redistribution if needed)
+    CD!BinaryAssociation.allInstances()->forEach(b |
+      thisModule.emitBinary(b, t)
+    );
+
+    -- copy Reflexive associations
+    CD!ReflexiveAssociation.allInstances()->forEach(r |
+      thisModule.emitReflexive(r, t)
+    );
+
+    -- transform Aggregations
+    CD!Aggregation.allInstances()->forEach(a |
+      thisModule.emitAggregation(a, t)
+    );
+
+    -- transform Compositions
+    CD!Composition.allInstances()->forEach(cmp |
+      thisModule.emitComposition(cmp, t)
+    );
+
+    -- transform N-ary associations
+    CD!NaryAssociation.allInstances()->forEach(na |
+      thisModule.emitNary(na, t)
+    );
+  }
+}
+
+-- ===========================================
+-- ============== Classes & Attributes =========
+-- ===========================================
+
+lazy rule Class2Class {
+  from  s : CD!Class (s.isKept())
+  to    tc : ACD!Class (
+           name <- s.name,
+           attributes <- s.effectiveAttributes()->collect(a | thisModule.Attribute2Attribute(a))
+         )
+  do {
+    -- If this class is a superclass in a disjoint & complete inheritance, add discriminator
+    if s.hasDisjointCompleteInheritance() then {
+      var disc : ACD!Attribute;
+      disc <- ACD!Attribute{};
+      disc.attribname <- 'type';
+      disc.type <- ACD!Type#string;
+      disc.isUnique <- false;
+      tc.attributes <- tc.attributes->append(disc);
+    }
+  }
+}
+
+lazy rule Attribute2Attribute {
+  from s : CD!Attribute
+  to   t : ACD!Attribute (
+         attribname <- s.attribname,
+         type <- thisModule.mapType(s.type),
+         isUnique <- s.isUnique
+       )
+}
+
+-- ===========================================
+-- ============== Association emitters =========
+-- ===========================================
+
+-- Copy/redistribute a binary association into one or many ACD binaries.
+-- If an end participant is a superclass to be removed, we generate one association per kept subclass.
+-- If both ends are such superclasses, we generate the cross product.
+helper def: emitBinary(b : CD!BinaryAssociation, m : ACD!Model) : OclAny =
+  let p1 : CD!Class = b.end1.participant in
+  let p2 : CD!Class = b.end2.participant in
+  let set1 : Set(CD!Class) =
+      if p1.removedAsSuperclass() then p1.directSubclasses()->select(k | k.isKept()) else Set{p1} endif in
+  let set2 : Set(CD!Class) =
+      if p2.removedAsSuperclass() then p2.directSubclasses()->select(k | k.isKept()) else Set{p2} endif in
+  set1->collect(x |
+    set2->collect(y |
+      thisModule.makeBinary(b.name,
+                            x, thisModule.cloneMult(b.end1.multiplicity), b.end1.role,
+                            y, thisModule.cloneMult(b.end2.multiplicity), b.end2.role,
+                            b.relAttributes, m)
+    )
+  );
+
+-- Reflexive: if the class is removed as super, replicate for each subclass
+helper def: emitReflexive(r : CD!ReflexiveAssociation, m : ACD!Model) : OclAny =
+  let c : CD!Class = r.cls in
+  let reps : Set(CD!Class) =
+    if c.removedAsSuperclass() then c.directSubclasses()->select(k | k.isKept()) else Set{c} endif in
+  reps->collect(x |
+    thisModule.makeReflexive(r.name, x, r.role1, r.role2,
+                             thisModule.cloneMult(r.m1), thisModule.cloneMult(r.m2),
+                             r.relAttributes, m)
+  );
+
+-- Aggregation: parent C1, child C2 -> 'has' with 0..* on C1, keep child mult on C2
+helper def: emitAggregation(a : CD!Aggregation, m : ACD!Model) : OclAny =
+  let parents : Set(CD!Class) =
+    if a.parent.removedAsSuperclass() then a.parent.directSubclasses()->select(k | k.isKept()) else Set{a.parent} endif in
+  let children : Set(CD!Class) =
+    if a.child.removedAsSuperclass() then a.child.directSubclasses()->select(k | k.isKept()) else Set{a.child} endif in
+  parents->collect(p |
+    children->collect(c |
+      thisModule.makeBinary('has',
+        p, thisModule.zeroStar(), 'parent',
+        c, thisModule.cloneMult(a.childMult), 'child',
+        a.relAttributes, m)
+    )
+  );
+
+-- Composition: whole C1, part C2 -> 'is-composed-of' with 1..1 on C1, keep part mult on C2
+helper def: emitComposition(cmp : CD!Composition, m : ACD!Model) : OclAny =
+  let wholes : Set(CD!Class) =
+    if cmp.whole.removedAsSuperclass() then cmp.whole.directSubclasses()->select(k | k.isKept()) else Set{cmp.whole} endif in
+  let parts : Set(CD!Class) =
+    if cmp.part.removedAsSuperclass() then cmp.part.directSubclasses()->select(k | k.isKept()) else Set{cmp.part} endif in
+  wholes->collect(w |
+    parts->collect(p |
+      thisModule.makeBinary('is-composed-of',
+        w, thisModule.oneOne(), 'whole',
+        p, thisModule.cloneMult(cmp.partMult), 'part',
+        cmp.relAttributes, m)
+    )
+  );
+
+-- N-ary ASSOC(C1..Cn) -> new Class 'ASSOC' + for each Ci a Binary 'ASSOC_Ci'
+helper def: emitNary(na : CD!NaryAssociation, m : ACD!Model) : OclAny =
+  let allEnds : Sequence(CD!AssocEnd) = Sequence{na.first, na.second}->union(na.ends)->asSequence() in
+  -- create the new class 'ASSOC'
+  let newC : ACD!Class = ACD!Class{ name <- na.name, attributes <- Sequence{} } in
+  m.classes <- m.classes->append(newC);
+  -- for each end (participant), create a binary association with ?..? on the ASSOC side
+  allEnds->collect(e |
+    let endLabel : CD!Class = e.participant in
+    let reps : Set(CD!Class) =
+      if endLabel.removedAsSuperclass() then endLabel.directSubclasses()->select(k | k.isKept()) else Set{endLabel} endif in
+    reps->collect(lbl |
+      thisModule.makeBinary(na.name + '_' + lbl.name,
+        lbl, thisModule.cloneMult(e.multiplicity), e.role,
+        -- the new 'ASSOC' class side with ?..?
+        newC, thisModule.unknownMult(), na.name + '_role',
+        na.relAttributes, m)
+    )
+  );
+
+-- Factory to actually create and attach a BinaryAssociation into model m
+helper def: makeBinary(an : String,
+                       c1 : CD!Class, m1 : ACD!Multiplicity, role1 : String,
+                       c2 : CD!Class, m2 : ACD!Multiplicity, role2 : String,
+                       relAttrs : Sequence(CD!Attribute),
+                       m : ACD!Model) : ACD!BinaryAssociation =
+  let ba : ACD!BinaryAssociation = ACD!BinaryAssociation{
+    name <- an,
+    end1 <- ACD!AssocEnd{
+      participant <- thisModule.tgtClass(c1),
+      role <- role1,
+      multiplicity <- m1
+    },
+    end2 <- ACD!AssocEnd{
+      participant <- thisModule.tgtClass(c2),
+      role <- role2,
+      multiplicity <- m2
+    }
+  } in
+  -- copy relationship attributes (if any) onto the new association
+  (relAttrs->notEmpty()).implies(
+    ba.relAttributes <- relAttrs->collect(a | thisModule.Attribute2Attribute(a))
+  );
+  m.associations <- m.associations->append(ba);
+  ba;
+
+-- Factory for ReflexiveAssociation
+helper def: makeReflexive(an : String, c : CD!Class, role1 : String, role2 : String,
+                          mm1 : ACD!Multiplicity, mm2 : ACD!Multiplicity,
+                          relAttrs : Sequence(CD!Attribute),
+                          m : ACD!Model) : ACD!ReflexiveAssociation =
+  let ra : ACD!ReflexiveAssociation = ACD!ReflexiveAssociation{
+    name <- an,
+    cls <- thisModule.tgtClass(c),
+    role1 <- role1,
+    role2 <- role2,
+    m1 <- mm1,
+    m2 <- mm2
+  } in
+  (relAttrs->notEmpty()).implies(
+    ra.relAttributes <- relAttrs->collect(a | thisModule.Attribute2Attribute(a))
+  );
+  m.associations <- m.associations->append(ra);
+  ra;

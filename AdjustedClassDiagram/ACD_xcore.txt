@@ -1,0 +1,80 @@
+package acd "http://example.org/acd/1.0"
+
+/** Primitive attribute types allowed in adjusted class diagrams */
+enum Type {
+  string   = "string"
+  integer  = "integer"
+  float    = "float"
+  date     = "date"
+  datetime = "datetime"
+}
+
+/** Root model: contains classes and (binary/reflexive) associations only */
+class Model {
+  String name
+  contains Class[*] classes
+  contains Association[*] associations
+}
+
+/** Entity (no inheritance/aggregation/composition in adjusted CD) */
+class Class {
+  String name
+  contains Attribute[*] attributes opposite ownerClass
+}
+
+/** Attribute owned by a Class or by an Association (association attribute) */
+class Attribute {
+  container Class ownerClass        opposite attributes
+  container Association ownerAssoc  opposite relAttributes
+  Type type
+  String attribname
+  boolean isUnique
+}
+
+/** Abstract association base (for BinaryAssociation, ReflexiveAssociation) */
+abstract class Association {
+  String name
+  contains Attribute[*] relAttributes opposite ownerAssoc
+}
+
+/** One association end: target class, optional role, and multiplicity */
+class AssocEnd {
+  ref Class participant
+  String role
+  contains Multiplicity multiplicity
+}
+
+/** 
+ * A multiplicity consists of two bounds.
+ * Each bound can be:
+ *   - a concrete integer value (value, with unknown=false, unlimited=false)
+ *   - unknown (unknown=true)
+ *   - unlimited '*' (unlimited=true)
+ * When unknown or unlimited is true, 'value' is ignored.
+ */
+class Multiplicity {
+  contains Bound lower
+  contains Bound upper
+}
+
+/** Lower/upper bound with support for INT, '*' (unlimited), or '?' (unknown) */
+class Bound {
+  int value
+  boolean unknown
+  boolean unlimited
+}
+
+/** Binary association with exactly two ends */
+class BinaryAssociation extends Association {
+  contains AssocEnd end1
+  contains AssocEnd end2
+}
+
+/** Reflexive association on a single class, with two roles/multiplicities */
+class ReflexiveAssociation extends Association {
+  ref Class cls
+  String role1
+  String role2
+  contains Multiplicity m1
+  contains Multiplicity m2
+}

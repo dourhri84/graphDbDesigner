@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="acd"
+    nsURI="http://example.org/acd/1.0"
+    nsPrefix="acd">
+
+  <!-- ===== Enum: primitive attribute types ===== -->
+  <eClassifiers xsi:type="ecore:EEnum" name="Type">
+    <eLiterals name="STRING"   value="0" literal="string"/>
+    <eLiterals name="INTEGER"  value="1" literal="integer"/>
+    <eLiterals name="FLOAT"    value="2" literal="float"/>
+    <eLiterals name="DATE"     value="3" literal="date"/>
+    <eLiterals name="DATETIME" value="4" literal="datetime"/>
+  </eClassifiers>
+
+  <!-- ===== Root model ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Model">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="classes" upperBound="-1"
+        containment="true" eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="associations" upperBound="-1"
+        containment="true" eType="#//Association"/>
+  </eClassifiers>
+
+  <!-- ===== Class (entity) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Class">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes" upperBound="-1"
+        containment="true" eType="#//Attribute" eOpposite="#//Attribute/ownerClass"/>
+  </eClassifiers>
+
+  <!-- ===== Attribute (owned by Class or Association) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Attribute">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ownerClass" eType="#//Class"
+        eOpposite="#//Class/attributes"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ownerAssoc" eType="#//Association"
+        eOpposite="#//Association/relAttributes"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//Type"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attribname" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isUnique" eType="#//EBoolean"
+        defaultValueLiteral="false"/>
+  </eClassifiers>
+
+  <!-- ===== Association (abstract base) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Association" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <!-- Optional association-level attributes -->
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relAttributes" upperBound="-1"
+        containment="true" eType="#//Attribute" eOpposite="#//Attribute/ownerAssoc"/>
+  </eClassifiers>
+
+  <!-- ===== BinaryAssociation (two ends) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="BinaryAssociation">
+    <eSuperTypes href="#//Association"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end1" containment="true" eType="#//AssocEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end2" containment="true" eType="#//AssocEnd"/>
+  </eClassifiers>
+
+  <!-- ===== ReflexiveAssociation (one class, two roles/multiplicities) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="ReflexiveAssociation">
+    <eSuperTypes href="#//Association"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cls" eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role1" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role2" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m1" containment="true" eType="#//Multiplicity"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m2" containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- ===== AssocEnd ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="AssocEnd">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="participant" eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="multiplicity" containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- ===== Multiplicity: lower..upper via Bound objects ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Multiplicity">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="lower" containment="true" eType="#//Bound"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="upper" containment="true" eType="#//Bound"/>
+  </eClassifiers>
+
+  <!-- ===== Bound: int value OR unknown ('?') OR unlimited ('*') ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Bound">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unknown" eType="#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unlimited" eType="#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+
+  <!-- ===== Built-in datatype aliases (optional) ===== -->
+  <eClassifiers xsi:type="ecore:EDataType" name="EString"  instanceClassName="java.lang.String"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EInt"     instanceClassName="int"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EBoolean" instanceClassName="boolean"/>
+
+</ecore:EPackage>

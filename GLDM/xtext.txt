@@ -1,0 +1,88 @@
+grammar org.graphdesign.gldm.GLDMD with org.eclipse.xtext.common.Terminals
+
+generate gldm "http://example.org/gldm/1.0"
+
+/* ===========================
+ *  Graph Logical DB Model (data-driven)
+ *  - nodeLabel  ≈ class
+ *  - relType    ≈ association (binary/reflexive only)
+ *  - property   ≈ attribute
+ *  - multiplicities: same as adjusted CD, with INT | '*' | '?' bounds
+ * =========================== */
+
+Model:
+  'gldm' name=ID '{'
+    nodeLabels+=NodeLabel+          // at least one node label
+    relTypes+=RelType*
+  '}'
+;
+
+/* ===========================
+ *  Node labels & properties
+ * =========================== */
+
+NodeLabel:
+  'nodeLabel' name=ID '{'
+    properties+=Property+           // at least one property
+  '}'
+;
+
+Property:
+  type=PropType name=ID ('unique')? ';'?
+;
+
+// Keep aligned with your adjusted CD dialect
+PropType:
+  'string' | 'integer' | 'float' | 'date' | 'datetime'
+;
+
+/* ===========================
+ *  Multiplicity with '?'
+ * =========================== */
+
+BoundToken returns ecore::EString:
+    INT | '*' | '?'
+;
+
+Multiplicity:
+  lower=BoundToken '..' upper=BoundToken
+;
+
+/* ===========================
+ *  Relationship types
+ * =========================== */
+
+RelType:
+    BinaryRelType
+  | ReflexiveRelType
+;
+
+// One end of a relationship type: node label, multiplicity, optional role
+RelEnd:
+  label=[NodeLabel] '[' multiplicity=Multiplicity ']' ('as' role=ID)?
+;
+
+// Optional properties owned by the relationship type
+RelBody:
+  ('{' relProperties+=Property* '}')?
+;
+
+/* -------- Binary relType (two ends) -------- */
+
+BinaryRelType:
+  'relType' name=ID 'binary'
+  '{' end1=RelEnd ',' end2=RelEnd '}'
+  RelBody
+;
+
+/* -------- Reflexive relType on one node label -------- */
+
+ReflexiveRelType:
+  'relType' name=ID 'reflexive' 'on' label=[NodeLabel]
+  '{'
+     ('roles' '(' role1=ID ',' role2=ID ')')?
+     'm1' '[' m1=Multiplicity ']'
+     'm2' '[' m2=Multiplicity ']'
+  '}'
+  RelBody
+;

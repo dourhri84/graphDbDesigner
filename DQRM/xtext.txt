@@ -1,0 +1,312 @@
+grammar org.graphdesign.dqrm.DQRM with org.eclipse.xtext.common.Terminals
+
+generate dqrm "http://example.org/dqrm/1.0"
+
+/* ================================================================
+ * DQRM = Data & Query Related Metamodel (Cypher-like subset)
+ * - Encapsulates a GLDM (node labels, rel types, properties)
+ * - Queries are declared as:
+ *       Query <name> as
+ *       <cypher-like text>
+ * - Supported kinds: Search, Update, Create(Node|Edge), Delete(Node|Edge)
+ * - Multiplicity bounds: INT | '*' (unbounded) | '?' (unknown)
+ * ================================================================ */
+
+
+/* ===========================
+ *  Root container
+ * =========================== */
+
+DQRM:
+  'dqrm' name=ID '{'
+    gldm=GLDM
+    requirements=FunctionalReq
+  '}'
+;
+
+
+/* ===========================
+ *  GLDM (embedded, data-driven)
+ * =========================== */
+
+GLDM:
+  'gldm' name=ID '{'
+    nodeLabels+=NodeLabel+          // at least one node label
+    relTypes+=RelType*
+  '}'
+;
+
+NodeLabel:
+  'nodeLabel' name=ID '{'
+    properties+=Property+           // at least one property
+  '}'
+;
+
+Property:
+  type=PropType name=ID ('unique')? ';'?
+;
+
+enum PropType:
+  STRING='string' | INTEGER='integer' | FLOAT='float' | DATE='date' | DATETIME='datetime'
+;
+
+/* ---- multiplicity: lower..upper with INT | '*' | '?' ---- */
+
+BoundToken returns ecore::EString:
+    INT | '*' | '?'
+;
+
+Multiplicity:
+  lower=BoundToken '..' upper=BoundToken
+;
+
+/* ---- relationship types (binary/reflexive only) ---- */
+
+RelType:
+    BinaryRelType
+  | ReflexiveRelType
+;
+
+RelEnd:
+  label=[NodeLabel] '[' multiplicity=Multiplicity ']' ('as' role=ID)?
+;
+
+RelBody:
+  ('{' relProperties+=Property* '}')?
+;
+
+BinaryRelType:
+  'relType' name=ID 'binary'
+  '{' end1=RelEnd ',' end2=RelEnd '}'
+  RelBody
+;
+
+ReflexiveRelType:
+  'relType' name=ID 'reflexive' 'on' label=[NodeLabel]
+  '{'
+     ('roles' '(' role1=ID ',' role2=ID ')')?
+     'm1' '[' m1=Multiplicity ']'
+     'm2' '[' m2=Multiplicity ']'
+  '}'
+  RelBody
+;
+
+
+/* ===========================
+ *  Functional-related requirements (Query model)
+ * =========================== */
+
+FunctionalReq:
+  'requirements' appname=STRING '{'
+    queries+=QueryDecl+
+  '}'
+;
+
+/* ---------- Query wrapper: "Query <name> as" ---------- */
+
+QueryDecl:
+  'Query' name=ID 'as' body=QueryBody ';'?
+;
+
+/* ---------- Query hierarchy (as requested) ---------- */
+
+QueryBody:
+    SearchBody
+  | UpdateBody
+  | CreateBody
+  | DeleteBody
+;
+
+CreateBody:
+    CreateNodeBody
+  | CreateEdgeBody
+;
+
+DeleteBody:
+    DeleteNodeBody
+  | DeleteEdgeBody
+;
+
+
+/* ===========================
+ *  Shared building blocks (patterns, values, refs)
+ * =========================== */
+
+NodePattern:
+  '(' var=ID? (':' label=[NodeLabel])? props=Props? ')'
+;
+
+RelDetail:
+  '[' var=ID? (':' type=[RelType])? props=Props? ']'
+;
+
+// Directions: undirected -, outgoing ->, incoming <-
+UndirectedRel: '-' rel=RelDetail '-';
+RightRel:      '-' rel=RelDetail '->';
+LeftRel:       '<-' rel=RelDetail '-';
+
+CreateEdgePattern:
+  left=NodePattern (UndirectedRel | RightRel | LeftRel) right=NodePattern
+;
+
+PatternElement:
+  head=NodePattern ( (UndirectedRel | RightRel | LeftRel) tail+=NodePattern )*
+;
+
+GraphPattern:
+  elements+=PatternElement (',' elements+=PatternElement)*
+;
+
+Props:
+  '{' pairs+=PropPair (',' pairs+=PropPair)* '}'
+;
+
+PropPair:
+  prop=[Property] ':' value=Value
+;
+
+Value:
+    STRING
+  | INT
+  | BOOL
+  | FLOAT
+  | Parameter         // the '?' placeholder for parameterized queries
+;
+
+Parameter returns ecore::EString: '?';
+
+BOOL returns ecore::EBoolean: 'true' | 'false';
+
+// ref.property, where 'ref' is a variable introduced in MATCH/CREATE
+PropertyRef:
+  var=ID '.' prop=[Property]
+;
+
+CompOp:
+    '='  | '<>' | '<' | '<=' | '>' | '>='
+  | 'CONTAINS' | 'STARTS' 'WITH' | 'ENDS' 'WITH'
+;
+
+
+/* ===========================
+ *  SEARCH (MATCH / WITH / WHERE / RETURN / ORDER BY)
+ * =========================== */
+
+SearchBody:
+  match=MatchClause
+  withClauses+=WithClause*        // optional chaining (Cypher-style)
+  where=WhereClause?
+  ret=ReturnClause
+  orderBy=OrderByClause?
+;
+
+MatchClause:
+  'MATCH' pattern=GraphPattern
+;
+
+// WITH passes a projection forward; minimal variant with optional aliases
+WithClause:
+  'WITH' items+=WithItem (',' items+=WithItem)*
+;
+
+WithItem:
+  (PropertyRef | ref=ID) ('AS' alias=ID)?
+;
+
+WhereClause:
+  'WHERE' expr=BooleanExpression
+;
+
+// Minimal boolean language: comparisons + AND/OR/NOT + parentheses
+BooleanExpression:
+  OrExpr
+;
+
+OrExpr returns BooleanExpression:
+  left=AndExpr ( 'OR' right+=AndExpr )*
+;
+
+AndExpr returns BooleanExpression:
+  left=NotExpr ( 'AND' right+=NotExpr )*
+;
+
+NotExpr returns BooleanExpression:
+  ('NOT')? prim=PrimaryExpr
+;
+
+PrimaryExpr returns BooleanExpression:
+    Comparison
+  | '(' BooleanExpression ')'
+;
+
+Comparison:
+  left=Operand op=CompOp right=Operand
+;
+
+Operand:
+    PropertyRef
+  | Value
+;
+
+// Return properties (and optionally variables, if desired keep both)
+ReturnClause:
+  'RETURN' items+=ReturnItem (',' items+=ReturnItem)*
+;
+
+ReturnItem:
+    PropertyRef
+  | ref=ID
+;
+
+OrderByClause:
+  'ORDER' 'BY' items+=OrderItem (',' items+=OrderItem)*
+;
+
+OrderItem:
+  (PropertyRef | ref=ID) (order=('ASC'|'DESC'))?
+;
+
+
+/* ===========================
+ *  UPDATE (SET)
+ * =========================== */
+
+UpdateBody:
+  'MATCH' pattern=GraphPattern
+  where=WhereClause?
+  'SET' sets+=SetItem (',' sets+=SetItem)*
+;
+
+SetItem:
+  target=PropertyRef '=' value=Value
+;
+
+
+/* ===========================
+ *  CREATE (two explicit forms)
+ * =========================== */
+
+CreateNodeBody:
+  'CREATE' node=NodePattern
+;
+
+CreateEdgeBody:
+  'CREATE' edge=CreateEdgePattern
+;
+
+
+/* ===========================
+ *  DELETE (two explicit forms)
+ * =========================== */
+
+DeleteNodeBody:
+  'MATCH' pattern=GraphPattern
+  where=WhereClause?
+  ('DETACH')? 'DELETE' nodes+=ID (',' nodes+=ID)*
+;
+
+DeleteEdgeBody:
+  'MATCH' pattern=GraphPattern
+  where=WhereClause?
+  'DELETE' rels+=ID (',' rels+=ID)*
+;

@@ -1,0 +1,125 @@
+Query Q1_OrdersOfClient as
+MATCH (c:Client)-[]-(o:Order)
+WHERE c.login = ?
+RETURN o
+;
+
+Query Q2_ProductsOfSellerWithWarranty as
+MATCH (p:Product)-[pvd:Provides]-(s:Seller)
+WHERE s.seller_gov_id = ? AND pvd.warranty > 6
+RETURN p
+;
+
+Query Q3_CompanyClientsOrderedInDate as
+MATCH (c:Client)-[:makes]-(o:Order)
+WHERE c.type = "company" AND o.odatetime = ?
+RETURN c
+;
+
+Query Q4_nextOrderOfClient as
+MATCH (c1:Client)-[:makes]-(o1:Order), (c2:Client)-[:makes]-(o2:Order)
+WHERE c1.login = ? AND c2.login = c1.login AND o2.sequenceNumber > o1.sequenceNumber
+RETURN o2
+ORDER BY o2.sequenceNumber ASC
+;
+
+Query Q5_categoriesPurchasedByClient as
+MATCH (c:Client)-[m:makes]-(o:Order)-[co:containsOrder]-(cnt:Contains)-[cp:containsProduct]-(p:Product)-[comp:is_composed_of]-(ct:Category)
+WHERE c.login = ?
+RETURN ct.code, ct.cname
+;
+
+Query Q6_DisabledMasterCard as
+MATCH (dc:DebitCard)
+WHERE dc.label = "Master"
+RETURN dc
+;
+
+Query Q7_MasterCardUsedInADate as
+MATCH (dc:DebitCard)-[cnc:concern1]-(p:Payment)
+WHERE dc.label = "Master" AND p.pm_datetime = ?
+RETURN dc
+ORDER BY p.pm_datetime DESC
+;
+
+Query Q8_VisaCardGivenBank as
+MATCH (dc:DebitCard)
+WHERE dc.label = "Visa" AND dc.bank = ?
+RETURN dc
+;
+
+Query Q9_ClientsTown as
+MATCH (c:Client)-[h:has]-(a:Address)
+WHERE a.town = ?
+RETURN c
+;
+
+Query Q10_OrdersClientLimitedShippingFees as
+MATCH (c:Client)-[:makes]-(o:Order)
+WHERE c.login = ? AND o.odatetime = ? AND o.shippingFee >= 100 AND o.shippingFee <= 10000
+RETURN o
+;
+
+Query Q11_clientsSameCreditCard as
+MATCH (c1:Client)-[:pays]->(:Order)-[:is_composed_of]->(:Payment)-[:concern2]->(cc:CreditCard),
+      (c2:Client)-[:pays]->(:Order)-[:is_composed_of]->(:Payment)-[:concern2]->(cc)
+WHERE c1.login <> c2.login
+RETURN c1.login, c2.login, cc.card_number
+;
+
+Query Q12_ClientsFromSameIP as
+MATCH (c1:Client)-[:makes]->(:Order)-[:is_composed_of]->(:Payment)-[:uses]->(ra:RemoteAccess),
+      (c2:Client)-[:makes]->(:Order)-[:is_composed_of]->(:Payment)-[:uses]->(ra)
+WHERE c1.login <> c2.login
+RETURN c1.login, c2.login, ra.ip
+ORDER BY ra.ip ASC
+;
+
+Query Q13_OrdersMadeByC1PaidByC2 as
+MATCH (buyer:Client)-[:makes]->(o:Order)-[:is_composed_of]->(p:Payment)-[:concern2]->(cc:CreditCard),
+      (owner:Client)-[:pays]->(:Order)-[:is_composed_of]->(:Payment)-[:concern2]->(cc)
+WHERE buyer.login <> owner.login
+RETURN buyer.login, owner.login, cc.card_number, o.oid
+;
+
+Query Q14_UpdateVatRate as
+MATCH (ctg:Category)
+WHERE ctg.code = ?
+SET ctg.VatRate = ?
+;
+
+Query Q15_UpdateStatusCreditCard as
+MATCH (cc:CreditCard)
+WHERE cc.card_number = ?
+SET cc.status = ?
+;
+
+Query Q15_UpdateStatusDebitCard as
+MATCH (dc:DebitCard)
+WHERE dc.card_number = ?
+SET dc.status = ?
+;
+
+Query Q16_UpdateWarrantyForProductBySeller as
+MATCH (p:Product)-[pvd:Provides]-(s:Seller)
+WHERE p.reference = ? AND s.seller_gov_id = ?
+SET pvd.warranty = ?
+;
+
+Query Q17_UpdatePhoneClient as
+MATCH (c:Client)
+WHERE c.login = ?
+SET c.phone = ?
+;
+
+Query Q18_deleteProduct as
+MATCH (p:Product)-[pvd:Provides]-(s:Seller)
+WHERE p.reference = ? AND s.seller_gov_id = ?
+DELETE p
+;
+
+Query Q19_deleteOldOrders as
+MATCH (o:Order)
+WHERE o.odatetime < "2014"
+DELETE o
+;

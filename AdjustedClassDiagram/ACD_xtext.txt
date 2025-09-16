@@ -1,0 +1,86 @@
+grammar org.graphdesign.umlcd.AdjustedCD with org.eclipse.xtext.common.Terminals
+
+generate acd "http://example.org/acd/1.0"
+
+/* ===========================
+ *  Top-level Adjusted CD
+ * =========================== */
+
+Model:
+  'acd' name=ID '{'
+    classes+=Class+                // at least one class
+    associations+=Association*     // only binary/reflexive associations
+  '}'
+;
+
+/* ===========================
+ *  Classes & Attributes
+ * =========================== */
+
+Class:
+  'class' name=ID '{'
+    attributes+=Attribute+         // at least one attribute per class
+  '}'
+;
+
+Attribute:
+  type=AttrType name=ID ('unique')? ';'?
+;
+
+// Keep types consistent with your CD grammar; include datetime if you use it
+AttrType:
+  'string' | 'integer' | 'float' | 'date' | 'datetime'
+;
+
+/* ===========================
+ *  Multiplicity
+ * =========================== */
+
+/** A bound can be an integer, '*' (unbounded), or '?' (unknown) */
+BoundToken returns ecore::EString:
+    INT | '*' | '?'
+;
+
+/** Range form: lower .. upper, where each side may be INT, '*', or '?' */
+Multiplicity:
+  lower=BoundToken '..' upper=BoundToken
+;
+
+/* ===========================
+ *  Associations (subset)
+ * =========================== */
+
+Association:
+    BinaryAssociation
+  | ReflexiveAssociation
+;
+
+// One association end: which class, multiplicity, optional role
+AssocEnd:
+  participant=[Class] '[' multiplicity=Multiplicity ']' ('as' role=ID)?
+;
+
+// Optional attributes on the association itself (keep if you need them)
+RelationshipBody:
+  ('{' relAttributes+=Attribute* '}')?
+;
+
+/* -------- Binary association (two ends) -------- */
+
+BinaryAssociation:
+  'association' name=ID 'binary'
+  '{' end1=AssocEnd ',' end2=AssocEnd '}'
+  RelationshipBody
+;
+
+/* -------- Reflexive association on one class -------- */
+
+ReflexiveAssociation:
+  'association' name=ID 'reflexive' 'on' cls=[Class]
+  '{'
+     ('roles' '(' role1=ID ',' role2=ID ')')?
+     'm1' '[' m1=Multiplicity ']'
+     'm2' '[' m2=Multiplicity ']'
+  '}'
+  RelationshipBody
+;

@@ -1,0 +1,109 @@
+package org.graphdesign.umlcd
+
+@Ecore(nsURI="http://example.org/cd/1.0", nsPrefix="cd")
+
+/** Root element that corresponds to the Xtext 'Model' rule:  cd <name> { ... } */
+class Model {
+  String name
+  contains Class[1..*] classes
+  contains Relationship[*] relationships
+}
+
+/** A class has at least one attribute */
+class Class {
+  String cname
+  contains Attribute[1..*] attributes opposite ownerClass
+}
+
+/** Attribute belongs exclusively to either a Class or a Relationship (via opposites) */
+class Attribute {
+  String attribname
+  Type   type
+  boolean isUnique = false
+
+  // exclusive ownership — exactly one of these containers will be set
+  container Class ownerClass  opposite attributes
+  container Relationship ownerRel opposite relAttributes
+}
+
+/** Primitive types (as in your grammar) */
+enum Type {
+  STRING = "string"
+  INT = "int"
+  FLOAT = "float"
+  BOOLEAN = "boolean"
+  DATE = "date"
+  DATETIME = "datetime"
+  ID = "id"
+}
+
+/** Multiplicity with '*' allowed in 'upper' */
+class Multiplicity {
+  int    lower
+  String upper
+}
+
+/** Abstract base for all relationships; can own relationship-level attributes */
+abstract class Relationship {
+  contains Attribute[*] relAttributes opposite ownerRel
+}
+
+/** Association family (named) */
+abstract class Association extends Relationship {
+  String aname
+}
+
+/** Multi-class associations (≥ 2 ends); abstract parent of Binary/N-ary */
+abstract class MultiClassAssoc extends Association {
+}
+
+/** One association end: which class, with which multiplicity, and optional role */
+class AssocEnd {
+  ref Class participant
+  contains Multiplicity multiplicity
+  String role
+}
+
+/** Binary association: exactly two ends */
+class BinaryAssociation extends MultiClassAssoc {
+  contains AssocEnd end1
+  contains AssocEnd end2
+}
+
+/** N-ary association: three or more ends (first, second, then a list of extra ends) */
+class NaryAssociation extends MultiClassAssoc {
+  contains AssocEnd first
+  contains AssocEnd second
+  contains AssocEnd[*] ends
+}
+
+/** Reflexive association on a single class, with two explicit multiplicities */
+class ReflexiveAssociation extends Association {
+  ref Class cls
+  String role1
+  String role2
+  contains Multiplicity m1
+  contains Multiplicity m2
+}
+
+/** Aggregation: parent side is implicitly '*', child side explicit via childMult */
+class Aggregation extends Relationship {
+  ref Class parent
+  ref Class child
+  contains Multiplicity childMult
+}
+
+/** Composition: whole side is implicitly '1', part side explicit via partMult */
+class Composition extends Relationship {
+  ref Class whole
+  ref Class part
+  contains Multiplicity partMult
+}
+
+/** Inheritance with explicit disjointness/completeness*/
+class Inheritance extends Relationship {
+  ref Class superClass
+  ref Class[*] subClasses
+  boolean isDisjoint
+  boolean isComplete
+}
