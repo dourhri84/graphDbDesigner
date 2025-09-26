@@ -88,12 +88,6 @@ WHERE ctg.code = ?
 SET ctg.VatRate = ?
 ;
 
-Query Q15_UpdateStatusCreditCard as
-MATCH (cc:CreditCard)
-WHERE cc.card_number = ?
-SET cc.status = ?
-;
-
 Query Q15_UpdateStatusDebitCard as
 MATCH (dc:DebitCard)
 WHERE dc.card_number = ?
@@ -123,3 +117,4 @@ MATCH (o:Order)
 WHERE o.odatetime < "2014"
 DELETE o
 ;
+
