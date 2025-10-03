@@ -96,13 +96,10 @@ Schema creation (\*\_schema.cypher)
 
 
 
-Data population (\*\_data.cypher)
-
-
 
 examples/
 
-Includes a running example (eCommerce) with different model instances (eCommerce.cdm, eCommerce.acdm, eCommerce.gldm, eCommerce.dqrm, eCommerce.qdgldm) and generated Neo4j scripts (eCommerce\_schema.cypher, eCommerce\_data.cypher).
+Includes a running example (eCommerce) with different model instances (eCommerce.cdm, eCommerce.acdm, eCommerce.gldm, eCommerce.dqrm, eCommerce.qdgldm) and generated Neo4j scripts (eCommerce\_schema.cypher).
 
 
 
@@ -182,7 +179,7 @@ Run ATL transformations (in org.graphdesign.transformations) to move from CDM to
 
 
 
-Use generators (in org.graphdesign.generators) to produce Cypher schema and data scripts.
+Use generators (in org.graphdesign.generators) to produce Cypher schema scripts.
 
 
 
@@ -217,8 +214,6 @@ Optimize schema with rules \& indexes → eCommerce.qdgldm (GLDM2QDGLDM)
 Generate schema script → eCommerce\_schema.cypher
 
 
-
-Generate dataset → eCommerce\_data.cypher
 
 
 
