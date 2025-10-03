@@ -1,0 +1,80 @@
+-- ATL Transformation: ACDM2GLDM
+-- From: Adjusted Class Diagram Metamodel (ACDM)
+-- To:   Graph Logical Data Metamodel (GLDM)
+
+module ACDM2GLDM;
+create OUT : GLDM from IN : ACDM;
+
+
+-- Rule: Model root
+
+rule ACDMModel2GLDMModel {
+    from
+        m : ACDM!Model
+    to
+        g : GLDM!Model (
+            name <- m.name,
+            nodeLabels <- m.classes,
+            relTypes <- m.associations
+        )
+}
+
+
+-- Rule: Class → NodeLabel
+
+rule Class2NodeLabel {
+    from
+        c : ACDM!Class
+    to
+        nl : GLDM!NodeLabel (
+            name <- c.cname,
+            properties <- c.attributes
+        )
+}
+
+
+-- Rule: Attribute → Property
+
+rule Attribute2Property {
+    from
+        a : ACDM!Attribute
+    to
+        p : GLDM!Property (
+            name <- a.attribname,
+            type <- a.type,
+            unique <- a.isUnique
+        )
+}
+
+
+-- Rule: Association → RelationshipType
+
+rule Association2RelationshipType {
+    from
+        a : ACDM!Association
+    to
+        rt : GLDM!RelType (
+            name <- a.aname,
+            end1 <- a.source,
+            end2 <- a.target,
+            m1 <- a.lowerSrc,
+            M1 <- a.upperSrc,
+            m2 <- a.lowerTrg,
+            M2 <- a.upperTrg,
+            relProperties <- a.attributes
+        )
+}
+
+
+-- Rule: Attribute of Association → Property of RelType
+
+rule AssocAttribute2RelProperty {
+    from
+        a : ACDM!Attribute (a.owner.oclIsTypeOf(ACDM!Association))
+    to
+        rp : GLDM!Property (
+            name <- a.attribname,
+            type <- a.type,
+            unique <- a.isUnique
+        )
+}

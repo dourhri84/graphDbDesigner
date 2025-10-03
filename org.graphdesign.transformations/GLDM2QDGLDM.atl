@@ -1,0 +1,210 @@
+-- ============================================================
+-- Module: GLDM2QDGLDM
+-- Author: GraphDesign Project
+-- Purpose: Transform a GLDM schema + DQRM workload
+--          into a query-driven GLDM (QDGLDM) optimized
+--          with rules 1–5 + indexing
+-- ============================================================
+
+module GLDM2QDGLDM;
+create OUT : QDGLDM from IN1 : GLDM, IN2 : DQRM;
+
+-- ============================================================
+-- HELPERS
+-- ============================================================
+
+-- Collect properties used in WHERE / ORDER BY
+helper context DQRM!QueryDecl def: usedProperties() : Sequence(GLDM!Property) =
+    if self.body.oclIsKindOf(DQRM!SearchBody) then
+        self.body.oclAsType(DQRM!SearchBody).where.expr->collect(e |
+            if e.oclIsKindOf(DQRM!Comparison) then
+                e.left.oclAsType(DQRM!PropertyRef).prop
+            else
+                OclUndefined
+            endif
+        )->excluding(OclUndefined)
+    else
+        Sequence{}
+    endif;
+
+-- Limited domain check (Rule 3)
+helper context GLDM!Property def: isLimitedDomain() : Boolean =
+   (self.type = 'string' or self.type = 'integer');
+
+-- Normalize multiplicity to string
+helper context GLDM!Multiplicity def: normalize() : String =
+   if self.upper = '*' then self.lower.toString() + '..*'
+   else if self.upper = '?' then self.lower.toString() + '..?'
+   else self.lower.toString() + '..' + self.upper.toString()
+   endif endif;
+
+-- Find NodeLabel by name in QDGLDM
+helper context thisModule def: findNodeLabel(name : String) : QDGLDM!NodeLabel =
+    QDGLDM!NodeLabel.allInstances()->any(n | n.name = name);
+
+-- ============================================================
+-- BASE TRANSFORMATION (COPY MODEL)
+-- ============================================================
+
+rule Model2QDModel {
+  from
+    g : GLDM!GLDMModel
+  to
+    q : QDGLDM!QDGLDMModel (
+      nodeLabels <- g.nodeLabels,
+      relationshipTypes <- g.relationshipTypes,
+      indexes <- Sequence{}
+    )
+}
+
+rule NodeLabel2QD {
+  from
+    n : GLDM!NodeLabel
+  to
+    qn : QDGLDM!NodeLabel (
+      name <- n.name,
+      properties <- n.properties
+    )
+}
+
+rule Property2QD {
+  from
+    p : GLDM!Property
+  to
+    qp : QDGLDM!Property (
+      name <- p.name,
+      type <- p.type,
+      indexed <- false
+    )
+}
+
+rule RelationshipType2QD {
+  from
+    r : GLDM!RelationshipType
+  to
+    qr : QDGLDM!RelationshipType (
+      name <- r.name,
+      source <- r.source,
+      target <- r.target,
+      properties <- r.properties,
+      kind <- r.kind,
+      sourceMultiplicity <- r.sourceMultiplicity.normalize(),
+      targetMultiplicity <- r.targetMultiplicity.normalize()
+    )
+}
+
+-- ============================================================
+-- OPTIMIZATION RULES (R1–R5)
+-- ============================================================
+
+-- Rule 1: Generic relationship
+rule GenericRelationship {
+  from
+    q : DQRM!QueryDecl (q.body.oclIsKindOf(DQRM!SearchBody) and
+                        q.body.pattern.elements->size() > 1)
+  to
+    r : QDGLDM!RelationshipType (
+      name <- 'participates_' + q.name,
+      source <- q.body.pattern.elements->first().head.label,
+      target <- q.body.pattern.elements->last().tail->last(),
+      kind <- 'generic',
+      sourceMultiplicity <- '0..*',
+      targetMultiplicity <- '0..*'
+    )
+}
+
+-- Rule 2: Relationship with attributes -> Fact node
+rule Rel2FactNode {
+  from
+    r : GLDM!RelationshipType (r.properties->size() > 0)
+  to
+    fact : QDGLDM!NodeLabel (
+      name <- r.name + '_Fact',
+      properties <- r.properties
+    ),
+    rel1 : QDGLDM!RelationshipType (
+      name <- r.name + '_src',
+      source <- r.source,
+      target <- fact,
+      kind <- 'fact-link',
+      sourceMultiplicity <- r.sourceMultiplicity.normalize(),
+      targetMultiplicity <- '1'
+    ),
+    rel2 : QDGLDM!RelationshipType (
+      name <- r.name + '_tgt',
+      source <- fact,
+      target <- r.target,
+      kind <- 'fact-link',
+      sourceMultiplicity <- '1',
+      targetMultiplicity <- r.targetMultiplicity.normalize()
+    )
+}
+
+-- Rule 3: Property with limited values -> NodeLabel
+rule Property2CategoryNode {
+  from
+    p : GLDM!Property (p.isLimitedDomain())
+  to
+    cat : QDGLDM!NodeLabel (
+      name <- p.name + '_Category',
+      properties <- Sequence{}
+    ),
+    rel : QDGLDM!RelationshipType (
+      name <- 'typeOf_' + p.name,
+      source <- p.eContainer(),   -- original NodeLabel
+      target <- cat,
+      kind <- 'categorization',
+      sourceMultiplicity <- '0..*',
+      targetMultiplicity <- '1'
+    )
+}
+
+-- Rule 4: Sequence relationships
+rule AddSequenceRel {
+  from
+    q : DQRM!QueryDecl (q.body.oclIsKindOf(DQRM!SearchBody) and
+                        q.body.match.pattern.elements->exists(e |
+                           e.head.label.name = 'Order'))
+  to
+    rel : QDGLDM!RelationshipType (
+      name <- 'Next',
+      source <- thisModule.findNodeLabel('Order'),
+      target <- thisModule.findNodeLabel('Order'),
+      kind <- 'sequence',
+      sourceMultiplicity <- '0..1',
+      targetMultiplicity <- '0..1'
+    )
+}
+
+-- Rule 5: Implicit paths
+rule AddImplicitRel {
+  from
+    q : DQRM!QueryDecl (q.body.oclIsKindOf(DQRM!SearchBody) and
+                        q.body.match.pattern.elements->exists(e |
+                           e.head.label.name = 'Client' and
+                           e.tail->exists(t | t.label.name = 'Category')))
+  to
+    rel : QDGLDM!RelationshipType (
+      name <- 'CategoriesPurchasedByClient',
+      source <- thisModule.findNodeLabel('Client'),
+      target <- thisModule.findNodeLabel('Category'),
+      kind <- 'implicit',
+      sourceMultiplicity <- '0..*',
+      targetMultiplicity <- '0..*'
+    )
+}
+
+-- ============================================================
+-- INDEXING RULE
+-- ============================================================
+
+rule IndexCreation {
+  from
+    q : DQRM!QueryDecl (q.usedProperties()->notEmpty())
+  to
+    idx : QDGLDM!Index (
+      indexName <- 'idx_' + q.name,
+      nodeName <- q.usedProperties()->first().eContainer().name,
+      properties <- q.usedProperties()
+    )
+}

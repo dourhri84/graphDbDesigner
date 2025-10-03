@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="cd"
+    nsURI="http://example.org/cd/1.0"
+    nsPrefix="cd">
+
+  <!-- =========================
+       ENUM: Type
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EEnum" name="Type">
+    <eLiterals name="STRING"   value="0" literal="string"/>
+    <eLiterals name="INT"      value="1" literal="int"/>
+    <eLiterals name="FLOAT"    value="2" literal="float"/>
+    <eLiterals name="BOOLEAN"  value="3" literal="boolean"/>
+    <eLiterals name="DATE"     value="4" literal="date"/>
+    <eLiterals name="DATETIME" value="5" literal="datetime"/>
+    <eLiterals name="ID"       value="6" literal="id"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Model (root)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Model">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="classes"
+                         upperBound="-1" containment="true"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relationships"
+                         upperBound="-1" containment="true"
+                         eType="#//Relationship"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Class
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Class">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="cname"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="attributes"
+                         upperBound="-1" containment="true"
+                         eType="#//Attribute" eOpposite="#//Attribute/ownerClass"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Attribute
+       (exclusive ownership via opposites)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Attribute">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="attribname"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type"
+                         eType="#//Type"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isUnique"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean"
+                         defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ownerClass"
+                         eType="#//Class" containment="false" resolveProxies="true"
+                         eOpposite="#//Class/attributes" transient="true" volatile="true" derived="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ownerRel"
+                         eType="#//Relationship" containment="false" resolveProxies="true"
+                         eOpposite="#//Relationship/relAttributes" transient="true" volatile="true" derived="true"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Multiplicity
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Multiplicity">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lower"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upper"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- =========================
+       ABSTRACT: Relationship
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Relationship" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relAttributes"
+                         upperBound="-1" containment="true"
+                         eType="#//Attribute" eOpposite="#//Attribute/ownerRel"/>
+  </eClassifiers>
+
+  <!-- =========================
+       ABSTRACT: Association (extends Relationship)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Association" abstract="true"
+                eSuperTypes="#//Relationship">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="aname"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- =========================
+       ABSTRACT: MultiClassAssoc (extends Association)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="MultiClassAssoc" abstract="true"
+                eSuperTypes="#//Association"/>
+
+  <!-- =========================
+       CLASS: AssocEnd
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="AssocEnd">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="participant"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="multiplicity"
+                         containment="true" eType="#//Multiplicity"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: BinaryAssociation (extends MultiClassAssoc)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="BinaryAssociation"
+                eSuperTypes="#//MultiClassAssoc">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end1"
+                         containment="true" eType="#//AssocEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end2"
+                         containment="true" eType="#//AssocEnd"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: NaryAssociation (extends MultiClassAssoc)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="NaryAssociation"
+                eSuperTypes="#//MultiClassAssoc">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="first"
+                         containment="true" eType="#//AssocEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="second"
+                         containment="true" eType="#//AssocEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ends"
+                         upperBound="-1" containment="true" eType="#//AssocEnd"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: ReflexiveAssociation (extends Association)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="ReflexiveAssociation"
+                eSuperTypes="#//Association">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="cls"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role1"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role2"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m1"
+                         containment="true" eType="#//Multiplicity"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m2"
+                         containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Aggregation (extends Relationship)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Aggregation"
+                eSuperTypes="#//Relationship">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="parent"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="child"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="childMult"
+                         containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Composition (extends Relationship)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Composition"
+                eSuperTypes="#//Relationship">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="whole"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="part"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="eccore:EReference" name="partMult"
+                         xmlns:eccore="http://www.eclipse.org/emf/2002/Ecore"
+                         containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- =========================
+       CLASS: Inheritance (extends Relationship)
+       ========================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="Inheritance"
+                eSuperTypes="#//Relationship">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="superClass"
+                         eType="#//Class"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="subClasses"
+                         upperBound="-1" eType="#//Class"/>
+    <!-- explicit strings (no enums); enforce allowed values in a validator -->
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="disjointness"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="completeness"
+                         eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+</ecore:EPackage>

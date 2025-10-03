@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description:Group
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:description="http://www.eclipse.org/sirius/description/1.1.0"
+    name="QDGLDMDesign"
+    version="11.1.0">
+
+  <!-- =============================
+       VIEWPOINT
+       ============================= -->
+  <ownedViewpoints
+      name="QDGLDM"
+      modelFileExtension="qdgldm"
+      fixedColorPalette="true">
+
+    <!-- =============================
+         DIAGRAM: Graph Logical Model
+         ============================= -->
+    <ownedRepresentations xsi:type="description:DiagramDescription"
+        name="QDGLDM Diagram"
+        titleExpression="aql:self.name"
+        domainClass="QDGLDMModel"
+        preconditionExpression="aql:self.oclIsKindOf(QDGLDMModel)"
+        defaultLayer="Default">
+
+      <defaultLayer name="Default">
+
+        <!-- Node for NodeLabel -->
+        <nodeMappings name="NodeLabelMapping"
+            domainClass="NodeLabel"
+            semanticCandidatesExpression="aql:self.nodeLabels">
+          <style xsi:type="description:SquareDescription"
+              labelExpression="aql:self.name"
+              labelSize="12"
+              width="100" height="60"
+              color="light_blue"/>
+        </nodeMappings>
+
+        <!-- Node for Index -->
+        <nodeMappings name="IndexMapping"
+            domainClass="Index"
+            semanticCandidatesExpression="aql:self.indexes">
+          <style xsi:type="description:SquareDescription"
+              labelExpression="aql:self.indexName + ' (Index)'"
+              labelSize="10"
+              width="120" height="40"
+              color="light_green"/>
+        </nodeMappings>
+
+        <!-- Edges for RelationshipTypes -->
+        <edgeMappings name="RelationshipMapping"
+            domainClass="RelationshipType"
+            semanticCandidatesExpression="aql:self.relationshipTypes"
+            sourceMappingName="NodeLabelMapping"
+            targetMappingName="NodeLabelMapping">
+          <style xsi:type="description:EdgeStyleDescription"
+              routingStyle="manhattan"
+              strokeSizeComputationExpression="1"
+              labelExpression="aql:self.name + ' : ' + self.kind"
+              labelSize="9"
+              sourceArrow="InputArrow"
+              targetArrow="OutputArrow"/>
+        </edgeMappings>
+
+        <!-- Edges for Indexes linked to properties -->
+        <edgeMappings name="IndexPropertyMapping"
+            domainClass="Property"
+            semanticCandidatesExpression="aql:self.properties"
+            sourceMappingName="IndexMapping"
+            targetMappingName="NodeLabelMapping">
+          <style xsi:type="description:EdgeStyleDescription"
+              routingStyle="straight"
+              strokeSizeComputationExpression="1"
+              labelExpression="aql:self.name"
+              labelSize="8"
+              sourceArrow="NoDecoration"
+              targetArrow="InputArrow"/>
+        </edgeMappings>
+
+      </defaultLayer>
+    </ownedRepresentations>
+
+    <!-- =============================
+         TABLE: Indexes Overview
+         ============================= -->
+    <ownedRepresentations xsi:type="description:CrossTableDescription"
+        name="Index Table"
+        titleExpression="'Index Overview'"
+        domainClass="QDGLDMModel"
+        preconditionExpression="aql:self.indexes->size() > 0">
+
+      <lines name="Indexes"
+          semanticCandidatesExpression="aql:self.indexes"
+          domainClass="Index"
+          labelExpression="aql:self.indexName"/>
+
+      <columns name="Properties"
+          semanticCandidatesExpression="aql:self.properties"
+          domainClass="Property"
+          labelExpression="aql:self.name"/>
+
+    </ownedRepresentations>
+
+  </ownedViewpoints>
+</description:Group>

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="gldm"
+    nsURI="http://example.org/gldm/1.0"
+    nsPrefix="gldm">
+
+  <!-- ===== Enum: property types ===== -->
+  <eClassifiers xsi:type="ecore:EEnum" name="PropType">
+    <eLiterals name="STRING"   value="0" literal="string"/>
+    <eLiterals name="INTEGER"  value="1" literal="integer"/>
+    <eLiterals name="FLOAT"    value="2" literal="float"/>
+    <eLiterals name="DATE"     value="3" literal="date"/>
+    <eLiterals name="DATETIME" value="4" literal="datetime"/>
+  </eClassifiers>
+
+  <!-- ===== Root model ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Model">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodeLabels" upperBound="-1"
+        containment="true" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relTypes" upperBound="-1"
+        containment="true" eType="#//RelType"/>
+  </eClassifiers>
+
+  <!-- ===== NodeLabel (≈ class) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="NodeLabel">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1"
+        containment="true" eType="#//Property" eOpposite="#//Property/ownerNodeLabel"/>
+  </eClassifiers>
+
+  <!-- ===== Property (owned by NodeLabel or RelType) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Property">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ownerNodeLabel" eType="#//NodeLabel"
+        eOpposite="#//NodeLabel/properties"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="ownerRelType" eType="#//RelType"
+        eOpposite="#//RelType/relProperties"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//PropType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="isUnique" eType="#//EBoolean"
+        defaultValueLiteral="false"/>
+  </eClassifiers>
+
+  <!-- ===== RelType (abstract base) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="RelType" abstract="true">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relProperties" upperBound="-1"
+        containment="true" eType="#//Property" eOpposite="#//Property/ownerRelType"/>
+  </eClassifiers>
+
+  <!-- ===== RelEnd ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="RelEnd">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="label" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="multiplicity" containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- ===== Multiplicity: lower..upper via Bound objects ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Multiplicity">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="lower" containment="true" eType="#//Bound"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="upper" containment="true" eType="#//Bound"/>
+  </eClassifiers>
+
+  <!-- ===== Bound: int value OR unknown ('?') OR unlimited ('*') ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="Bound">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="value" eType="#//EInt"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unknown" eType="#//EBoolean" defaultValueLiteral="false"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unlimited" eType="#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+
+  <!-- ===== BinaryRelType (two ends) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="BinaryRelType">
+    <eSuperTypes href="#//RelType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end1" containment="true" eType="#//RelEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end2" containment="true" eType="#//RelEnd"/>
+  </eClassifiers>
+
+  <!-- ===== ReflexiveRelType (one node label, two roles/multiplicities) ===== -->
+  <eClassifiers xsi:type="ecore:EClass" name="ReflexiveRelType">
+    <eSuperTypes href="#//RelType"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="label" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role1" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role2" eType="#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m1" containment="true" eType="#//Multiplicity"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m2" containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- ===== Built-in datatype aliases (optional) ===== -->
+  <eClassifiers xsi:type="ecore:EDataType" name="EString"  instanceClassName="java.lang.String"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EInt"     instanceClassName="int"/>
+  <eClassifiers xsi:type="ecore:EDataType" name="EBoolean" instanceClassName="boolean"/>
+
+</ecore:EPackage>

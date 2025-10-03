@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<viewpoint:DAnalysis
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:viewpoint="http://www.eclipse.org/sirius/1.1.0"
+    xmi:version="2.0"
+    name="CDM Analysis"
+    version="11.1.0.202009161200">
+
+  <!-- Reference to the semantic model (CDM.ecore or .cdm instance) -->
+  <semanticResources>platform:/resource/org.graphdesign.cdm/model/CDM.ecore</semanticResources>
+
+  <!-- One diagram representation -->
+  <ownedViews xmi:type="viewpoint:DView" name="CDM View">
+    <ownedRepresentationDescriptors
+        xmi:type="viewpoint:DRepresentationDescriptor"
+        name="ClassDiagram"
+        repPath="/CDM.odesign#//@ownedViewpoints.0/@ownedRepresentations.0">
+    </ownedRepresentationDescriptors>
+  </ownedViews>
+
+</viewpoint:DAnalysis>

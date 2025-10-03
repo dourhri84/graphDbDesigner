@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: org.graphdesign.cdm
+Bundle-SymbolicName: org.graphdesign.cdm;singleton:=true
+Bundle-Version: 1.0.0
+Bundle-Vendor: Your Name / Lab
+Bundle-RequiredExecutionEnvironment: JavaSE-11
+Require-Bundle: org.eclipse.emf.ecore;bundle-version="[2.20.0,3.0.0)"
+Export-Package: org.graphdesign.cdm

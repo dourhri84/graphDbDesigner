@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<genmodel:GenModel
+    xmlns:genmodel="http://www.eclipse.org/emf/2002/GenModel"
+    modelDirectory="/org.graphdesign.cdm/src-gen"
+    modelPluginID="org.graphdesign.cdm"
+    editPluginID="org.graphdesign.cdm.edit"
+    editorPluginID="org.graphdesign.cdm.editor"
+    modelName="CDM"
+    rootExtendsClass="org.eclipse.emf.ecore.impl.MinimalEObjectImpl$Container"
+    complianceLevel="8.0"
+    copyrightFields="false"
+    operationReflection="true"
+    importOrganizing="true"
+    updateClasspath="true"
+    testsDirectory="/org.graphdesign.cdm.tests/src"
+    testSuiteClass="org.graphdesign.cdm.tests.CDMAllTests">
+
+  <!-- Link to the Ecore model -->
+  <foreignModel>CDM.ecore</foreignModel>
+
+  <!-- Package definition -->
+  <genPackages
+      prefix="CDM"
+      basePackage="es.graphdesign"
+      disposableProviderFactory="true"
+      ecorePackage="CDM.ecore#/">
+  </genPackages>
+
+</genmodel:GenModel>

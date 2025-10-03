@@ -1,0 +1,61 @@
+// ============================================================
+// gldm2cypherHelpers.eol
+// Helper functions for EGL template gldm2cypher.egl
+// ============================================================
+
+// -----------------------------
+// NodeLabel helpers
+// -----------------------------
+
+// Return the primary key property of a nodeLabel
+operation GLDM!NodeLabel getPrimaryKey() : GLDM!Property {
+  return self.properties.selectOne(p | p.unique = true);
+}
+
+// Return the list of indexed properties of a nodeLabel
+operation GLDM!NodeLabel getIndexedProperties() : Sequence(GLDM!Property) {
+  return self.properties.select(p | p.indexed = true);
+}
+
+
+// -----------------------------
+// Property helpers
+// -----------------------------
+
+// Return the Cypher type for a property
+operation GLDM!Property cypherType() : String {
+  switch (self.type) {
+    case "string":    return "STRING";
+    case "integer":   return "INTEGER";
+    case "float":     return "FLOAT";
+    case "boolean":   return "BOOLEAN";
+    case "date":      return "DATE";
+    case "datetime":  return "DATETIME";
+    default:          return "STRING"; // fallback
+  }
+}
+
+// Return true if property is part of a composite index
+operation QDGLDM!Index isComposite() : Boolean {
+  return self.properties.size() > 1;
+}
+
+
+// -----------------------------
+// Relationship helpers
+// -----------------------------
+
+// Returns true if the relationship is generic
+operation GLDM!RelationshipType isGeneric() : Boolean {
+  return self.kind = "generic";
+}
+
+// Returns true if the relationship is sequence-based
+operation GLDM!RelationshipType isSequence() : Boolean {
+  return self.kind = "sequence";
+}
+
+// Returns true if the relationship is implicit
+operation GLDM!RelationshipType isImplicit() : Boolean {
+  return self.kind = "implicit";
+}

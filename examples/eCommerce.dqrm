@@ -1,0 +1,202 @@
+
+dqrm ecommerceDQRM {
+
+ // Embedded GLDM Model
+ gldm ecommerceGLDM {
+    
+  nodeLabel Client  {
+    string login unique;
+    string password;
+    int phone;
+    datetime creationDate;
+    string firstName;
+    string lastName;
+    string name;
+    int gov_id;
+    string type;
+  }
+
+  nodeLabel Address {
+    string addr_id unique;
+    string road;
+    string district;
+    string town;
+    int zipcode;
+  }
+
+  nodeLabel Order   {
+    int oid unique;
+    datetime odatetime;
+    float shippingFee;
+    float total;
+    int sequenceNumber;
+  }
+
+  nodeLabel Payment {
+    int pm_number unique;
+    datetime pm_datetime;
+  }
+
+  nodeLabel RemoteAccess {
+    int idAccess unique;
+    datetime timeAccess;
+    string ip;
+    string webBrowser;
+    string OSNameVersion;
+  }
+
+  nodeLabel CreditCard {
+    int card_number unique;
+    date expireDate;
+    int cvc;
+    boolean status;
+    string bank;
+    float interestRate;
+    float limit;
+  }
+
+  nodeLabel DebitCard {
+    int card_number unique;
+    date expireDate;
+    int cvc;
+    boolean status;
+    string bank;
+    float balance;
+    string label;
+  }
+
+  nodeLabel Product {
+    string reference unique;
+    string designation;
+    string description;
+  }
+
+  nodeLabel Category {
+    string code unique;
+    string cname;
+    float vatRate;
+  }
+
+  nodeLabel Seller {
+    int seller_gov_id unique;
+    string company_name;
+  }
+
+  // -------- Relationship types --------
+
+  // Client pays Orders (Client [0..1] - Order [0..*])
+  relType PAYS binary {
+    Client [0..1],
+    Order [0..*]
+  }
+
+  // Client makes Orders: Client [1] - Order [0..*]
+  relType MAKES binary {
+    Client [1],
+    Order [0..*]
+  }
+
+  // RemoteAccess uses Payment: RemoteAccess [1] - Payment [0..1]
+  relType USES binary {
+    RemoteAccess [1],
+    Payment [0..1]
+  }
+
+  // Payment concerns1 DebitCard
+  relType CONCERNS1 binary {
+    Payment [0..*],
+    DebitCard [0..1]
+  }
+
+  // Payment CONCERNS2 CreditCard
+  relType CONCERNS binary {
+    Payment [0..*],
+    CreditCard [0..1]
+  }
+
+
+  // Adjusting of the ternary relType "Contains": Order × Product × Seller
+  nodeLabel CONTAINS {
+    int orderedQty;
+    float unitPrice;
+    float discountRate;
+  }
+
+  relType CONTAINS_Order binary {
+    Order [0..*],
+    Contains [-1..-1],
+  } 
+
+  relType CONTAINS_Product binary {
+    Product [1..*],
+    Contains [-1..-1],
+  }
+
+  relType CONTAINS_Seller binary {
+    Seller [1..*],
+    Contains [-1..-1],
+  }
+
+  // Seller provides Product with stock/warranty attributes
+  relType PROVIDES binary {
+    Seller [1..*],
+    Product [1..*]
+  } {
+    int inStockQty;
+    int warranty;
+  }
+
+  // Reflexive relType on Client (referral)
+  relType REFERRAL reflexive on Client {
+    roles (referrer, referred)
+    m1 [0..*]   // referrer multiplicity
+    m2 [0..1]   // referred multiplicity
+  }
+
+  relType has binary {
+    Client [0..*],
+    Address [1]
+  } 
+
+  relType is_composed_of binary {
+    Category [1],
+    Product [1..*]
+  } 
+
+  relType is_composed_of2 binary {
+    Order [1],
+    Payment [0..1]
+  } 
+
+}
+
+ // Functional Requirements
+ requirements "Ecommerce queries" {
+
+    Query Q1_OrdersOfClient as
+      MATCH (c:Client)-[?:?]->(o:Order)
+      WHERE c.login=?
+      RETURN o.all;
+
+    Query Q2_ProductsOfSellerWithWarranty as
+      MATCH (p:Product)<-[:provides]-(s:Seller)
+      WHERE s.seller_gov_id=? AND warranty>6
+      RETURN p.all;
+
+    Query Q3_CompanyClients as
+      MATCH (c:Client)-[:makes]->(o:Order)
+      WHERE c.type="Company"
+      RETURN c,o;
+
+    Query Q4_nextOrderOfClient as
+      MATCH (c:Client)-[:makes]->(o1:Order),
+            (c)-[:makes]->(o2:Order)
+      WHERE c.login=? AND o2.sequenceNumber=o1.sequenceNumber+1
+      RETURN o2;
+
+    Query Q5_CategoriesPurchasedByClient as
+      MATCH (c:Client)-[:makes]->(o:Order)-[:contains]->(p:Product)-[:is-composed-of]->(ctg:Category)
+      WHERE c.login=?
+      RETURN ctg.name;
+  }
+}

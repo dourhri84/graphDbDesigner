@@ -1,0 +1,20 @@
+-- ATL Transformation: GLDM2DQRM
+-- From: Graph Logical Data Metamodel (GLDM)
+--       Queries (FunctionalReq) defined in DQRM.ecore
+-- To:   DQRM (GLDM + Queries)
+
+module GLDM2DQRM;
+create OUT : DQRM from IN1 : GLDM, IN2 : DQRM;
+
+-- Rule: Wrap GLDM + FunctionalReq into DQRM
+rule MergeGLDMandReq2DQRM {
+    from
+        g : GLDM!Model,
+        r : DQRM!FunctionalReq
+    to
+        d : DQRM!DQRM (
+            name <- g.name + '_DQRM',
+            gldm <- g,
+            requirements <- r
+        )
+}

@@ -1,0 +1,32 @@
+package org.graphdesign.qdgldm
+
+class QDGLDMModel {
+  contains NodeLabel[*] nodeLabels
+  contains RelationshipType[*] relationshipTypes
+  contains Index[*] indexes
+}
+
+class NodeLabel {
+  String name
+  contains Property[*] properties
+}
+
+class Property {
+  String name
+  String type
+  boolean indexed = false
+}
+
+class RelationshipType {
+  String name
+  ref NodeLabel source
+  ref NodeLabel target
+  contains Property[*] properties
+  String kind   // e.g., "generic", "sequence", "implicit"
+}
+
+class Index {
+  String indexName
+  String nodeName
+  refers Property[*] properties
+}

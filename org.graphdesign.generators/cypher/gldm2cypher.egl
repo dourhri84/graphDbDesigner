@@ -1,0 +1,62 @@
+[%
+// ============================================================
+// gldm2cypher.egl
+// EGL template for generating Neo4j Cypher schema definitions
+// from GLDM / QDGLDM metamodels
+// ============================================================
+
+// Context: The input model is an instance of GLDM/QDGLDM
+// This template outputs Cypher code for constraints, relationships, and indexes.
+// ============================================================
+%]
+
+// -----------------------------
+// Constraints on Node Labels
+// -----------------------------
+[% for (nodeLabel in GLDM!NodeLabel.all) { %]
+// === Node Label: [%= nodeLabel.name %]
+[% var pk = nodeLabel.getPrimaryKey(); %]
+[% if (pk.isDefined()) { %]
+CREATE CONSTRAINT unique_[%= nodeLabel.name.toLowerCase() %]
+IF NOT EXISTS
+FOR (n:[%= nodeLabel.name %])
+REQUIRE n.[%= pk.name %] IS UNIQUE;
+[% } else { %]
+// (No primary key detected for [%= nodeLabel.name %])
+[% } %]
+[% } %]
+
+
+// -----------------------------
+// Relationships (documented)
+// -----------------------------
+[% for (relType in GLDM!RelationshipType.all) { %]
+// === Relationship Type: [%= relType.name %]
+// Source: [%= relType.source.name %]
+// Target: [%= relType.target.name %]
+// Kind:   [%= relType.kind %]
+//
+// Properties:
+// [% for (prop in relType.properties) { %]  - [%= prop.name %] : [%= prop.type %]
+// [% } %]
+//
+// Multiplicities (if defined in model):
+//   [%= relType.source.name %] [cardinality source ?]
+//   [%= relType.target.name %] [cardinality target ?]
+//
+// NOTE: Relationships are created dynamically by data queries.
+// This template only documents schema semantics.
+// -------------------------------------------------
+[% } %]
+
+
+// -----------------------------
+// Indexes on Node Properties
+// -----------------------------
+[% for (index in QDGLDM!Index.all) { %]
+// === Index: [%= index.indexName %] on [%= index.nodeName %]
+CREATE INDEX [%= index.indexName %]
+IF NOT EXISTS
+FOR (n:[%= index.nodeName %])
+ON [% for (p in index.properties) { %]n.[%= p.name %][% if (p != index.properties.last) { %], [% } %][% } %];
+[% } %]

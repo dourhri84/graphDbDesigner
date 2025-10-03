@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="dqrm"
+    nsURI="http://example.org/dqrm/1.0"
+    nsPrefix="dqrm">
+
+  <!-- Root container -->
+  <eClassifiers xsi:type="ecore:EClass" name="DQRM">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="gldm" containment="true" eType="#//GLDM"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="requirements" containment="true" eType="#//FunctionalReq"/>
+  </eClassifiers>
+
+  <!-- ======================= -->
+  <!-- Embedded GLDM elements -->
+  <!-- ======================= -->
+  <eClassifiers xsi:type="ecore:EClass" name="GLDM">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodeLabels" upperBound="-1" containment="true" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relTypes" upperBound="-1" containment="true" eType="#//RelType"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="NodeLabel">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1" containment="true" eType="#//Property"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Property">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="type" eType="#//PropType"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="unique" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValueLiteral="false"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EEnum" name="PropType">
+    <eLiterals name="STRING" value="0" literal="string"/>
+    <eLiterals name="INTEGER" value="1" literal="integer"/>
+    <eLiterals name="FLOAT" value="2" literal="float"/>
+    <eLiterals name="DATE" value="3" literal="date"/>
+    <eLiterals name="DATETIME" value="4" literal="datetime"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="Multiplicity">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="lower" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="upper" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="RelType" abstract="true"/>
+
+  <eClassifiers xsi:type="ecore:EClass" name="BinaryRelType" eSuperTypes="#//RelType">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end1" containment="true" eType="#//RelEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="end2" containment="true" eType="#//RelEnd"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relProperties" upperBound="-1" containment="true" eType="#//Property"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="ReflexiveRelType" eSuperTypes="#//RelType">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="label" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role1" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role2" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m1" containment="true" eType="#//Multiplicity"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="m2" containment="true" eType="#//Multiplicity"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relProperties" upperBound="-1" containment="true" eType="#//Property"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="RelEnd">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="label" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="role" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="multiplicity" containment="true" eType="#//Multiplicity"/>
+  </eClassifiers>
+
+  <!-- ========================== -->
+  <!-- Functional Requirements -->
+  <!-- ========================== -->
+  <eClassifiers xsi:type="ecore:EClass" name="FunctionalReq">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="appname" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="queries" upperBound="-1" containment="true" eType="#//QueryDecl"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="QueryDecl">
+    <eStructuralFeatures xsi:type="ecore:EAttribute" name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="body" containment="true" eType="#//QueryBody"/>
+  </eClassifiers>
+
+  <eClassifiers xsi:type="ecore:EClass" name="QueryBody" abstract="true"/>
+  <eClassifiers xsi:type="ecore:EClass" name="SearchBody" eSuperTypes="#//QueryBody"/>
+  <eClassifiers xsi:type="ecore:EClass" name="UpdateBody" eSuperTypes="#//QueryBody"/>
+  <eClassifiers xsi:type="ecore:EClass" name="CreateNodeBody" eSuperTypes="#//QueryBody"/>
+  <eClassifiers xsi:type="ecore:EClass" name="CreateEdgeBody" eSuperTypes="#//QueryBody"/>
+  <eClassifiers xsi:type="ecore:EClass" name="DeleteNodeBody" eSuperTypes="#//QueryBody"/>
+  <eClassifiers xsi:type="ecore:EClass" name="DeleteEdgeBody" eSuperTypes="#//QueryBody"/>
+
+</ecore:EPackage>

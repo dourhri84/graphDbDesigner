@@ -1,0 +1,36 @@
+package org.graphdesign.qdgldm
+
+class QDGLDMModel {
+  contains NodeLabel[*] nodeLabels
+  contains RelationshipType[*] relationshipTypes
+  contains Index[*] indexes
+}
+
+class NodeLabel {
+  String name
+  contains Property[*] properties
+  contains Index[*] indexes   // indexes local to the node (optional, you can keep global)
+}
+
+class Property {
+  String name
+  String type
+  boolean indexed = false     // derived if property belongs to an Index
+}
+
+class RelationshipType {
+  String name
+  ref NodeLabel source
+  ref NodeLabel target
+  contains Property[*] properties
+  String kind   // e.g., "generic", "sequence", "implicit"
+  String sourceMultiplicity
+  String targetMultiplicity
+}
+
+class Index {
+  String indexName
+  ref NodeLabel targetNode
+  refers Property[*] properties
+  boolean unique = false
+}

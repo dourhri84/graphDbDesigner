@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ecore:EPackage 
+    xmi:version="2.0"
+    xmlns:xmi="http://www.omg.org/XMI"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:ecore="http://www.eclipse.org/emf/2002/Ecore"
+    name="qdgldm"
+    nsURI="http://www.graphdesign.org/qdgldm"
+    nsPrefix="qdgldm">
+
+  <!-- Root model -->
+  <eClassifiers xsi:type="ecore:EClass" name="QDGLDMModel">
+    <eStructuralFeatures xsi:type="ecore:EReference" name="nodeLabels" upperBound="-1" eType="#//NodeLabel" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="relationshipTypes" upperBound="-1" eType="#//RelationshipType" containment="true"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="indexes" upperBound="-1" eType="#//Index" containment="true"/>
+  </eClassifiers>
+
+  <!-- Node Label -->
+  <eClassifiers xsi:type="ecore:EClass" name="NodeLabel">
+    <eAttribute name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1" eType="#//Property" containment="true"/>
+  </eClassifiers>
+
+  <!-- Property -->
+  <eClassifiers xsi:type="ecore:EClass" name="Property">
+    <eAttribute name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eAttribute name="type" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eAttribute name="indexed" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EBoolean" defaultValue="false"/>
+  </eClassifiers>
+
+  <!-- Relationship Type -->
+  <eClassifiers xsi:type="ecore:EClass" name="RelationshipType">
+    <eAttribute name="name" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="source" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="target" eType="#//NodeLabel"/>
+    <eStructuralFeatures xsi:type="ecore:EReference" name="properties" upperBound="-1" eType="#//Property" containment="true"/>
+    <eAttribute name="kind" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/> <!-- generic, sequence, implicit -->
+  </eClassifiers>
+
+  <!-- Index -->
+  <eClassifiers xsi:type="ecore:EClass" name="Index">
+    <eAttribute name="propertyName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+    <eAttribute name="nodeName" eType="ecore:EDataType http://www.eclipse.org/emf/2002/Ecore#//EString"/>
+  </eClassifiers>
+
+</ecore:EPackage>

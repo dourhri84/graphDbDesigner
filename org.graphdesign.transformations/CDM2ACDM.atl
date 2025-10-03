@@ -1,0 +1,132 @@
+-- ATL Transformation: CDM2ACDM
+-- From: Class Diagram Metamodel (CDM)
+-- To:   Adjusted Class Diagram Metamodel (ACDM)
+
+module CDM2ACDM;
+create OUT : ACDM from IN : CDM;
+
+-- Rule: Classes (copied)
+rule Class2Class {
+    from
+        c : CDM!Class
+    to
+        ac : ACDM!Class (
+            cname <- c.cname,
+            attributes <- c.attributes
+        )
+}
+
+-- Rule: Attributes (copied as-is)
+rule Attribute2Attribute {
+    from
+        a : CDM!Attribute
+    to
+        aa : ACDM!Attribute (
+            attribname <- a.attribname,
+            type <- a.type,
+            isUnique <- a.isUnique
+        )
+}
+
+-- AR1: Composition → Association
+rule Composition2Association {
+    from
+        r : CDM!Composition
+    to
+        ar : ACDM!Association (
+            aname <- 'isComposedOf',
+            source <- r.whole,       -- C1
+            target <- r.part,        -- C2
+            lowerSrc <- 1,
+            upperSrc <- 1,
+            lowerTrg <- r.lower,     -- multiplicity of C2
+            upperTrg <- r.upper
+        )
+}
+
+-- AR1: Aggregation → Association
+rule Aggregation2Association {
+    from
+        r : CDM!Aggregation
+    to
+        ar : ACDM!Association (
+            aname <- 'has',
+            source <- r.parent,      -- C1
+            target <- r.child,       -- C2
+            lowerSrc <- r.lowerParent,
+            upperSrc <- r.upperParent,
+            lowerTrg <- r.lowerChild,
+            upperTrg <- r.upperChild
+        )
+}
+
+-- AR2: Inheritance → Adjusted using Strategy A or B
+-- Strategy A: Merge subclasses into superclass + add "type" attribute
+rule Inheritance2SuperclassA {
+    from
+        inh : CDM!Inheritance (inh.isDisjoint and inh.isComplete)
+    to
+        sup : ACDM!Class (
+            cname <- inh.superclass.cname,
+            attributes <- inh.superclass.attributes->union(
+                           inh.subclasses.attributes),
+            -- add discriminator "type"
+            attributes <- Set{
+                ACDM!Attribute{
+                    attribname <- 'type',
+                    type <- 'String'
+                }
+            }
+        )
+}
+
+-- Strategy B: Duplicate associations in subclasses
+rule Inheritance2SubclassB {
+    from
+        inh : CDM!Inheritance (not (inh.isDisjoint and inh.isComplete))
+    to
+        subs <- inh.subclasses->collect(s |
+            ACDM!Class (
+                cname <- s.cname,
+                attributes <- s.attributes->union(inh.superclass.attributes)
+            )
+        )
+}
+
+-- AR3: N-ary Association → Class + Binary Associations
+rule NaryAssociation2Class {
+    from
+        nary : CDM!NaryAssociation
+    to
+        ac : ACDM!Class (
+            cname <- nary.name,
+            attributes <- nary.attributes
+        ),
+        rels <- nary.ends->collect(e |
+            ACDM!Association (
+                aname <- nary.name + '_' + e.classRef.cname,
+                source <- ac,
+                target <- e.classRef,
+                lowerSrc <- e.lower,
+                upperSrc <- e.upper,
+                lowerTrg <- 0,
+                upperTrg <- -1 -- unknown multiplicity, to be set later
+            )
+        )
+}
+
+-- Default: Binary associations
+rule Association2Association {
+    from
+        r : CDM!Association
+    to
+        ar : ACDM!Association (
+            aname <- r.aname,
+            source <- r.end1,
+            target <- r.end2,
+            lowerSrc <- r.lower1,
+            upperSrc <- r.upper1,
+            lowerTrg <- r.lower2,
+            upperTrg <- r.upper2
+        )
+}
